@@ -187,6 +187,7 @@ function handle404(app, middleware) {
 
 function handleErrors(app, middleware) {
 	app.use(function(err, req, res, next) {
+		console.log('CODE WAS', err.code);
 		if (err.code === 'EBADCSRFTOKEN') {
 			winston.error(req.path + '\n', err.message);
 			return res.sendStatus(403);
