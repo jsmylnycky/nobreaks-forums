@@ -1,5 +1,5 @@
 'use strict';
-/* globals $, app, socket */
+/* globals $, app, socket, templates */
 
 define('admin/manage/ip-blacklist', ['settings'], function(Settings) {
 
@@ -22,6 +22,16 @@ define('admin/manage/ip-blacklist', ['settings'], function(Settings) {
 					type: 'success',
 					alert_id: 'blacklist-saved',
 					title: 'Blacklist Applied',
+				});
+			});
+		});
+
+		$('[data-action="test"]').on('click', function() {
+			socket.emit('admin.blacklist.validate', {
+				rules: blacklist.getValue()
+			}, function(err, data) {
+				templates.parse('admin/partials/blacklist-validate', data, function(html) {
+					bootbox.alert(html);
 				});
 			});
 		});
