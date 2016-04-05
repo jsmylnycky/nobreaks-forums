@@ -49,6 +49,7 @@
     "nodebb-plugin-emoji-extended": "1.0.3",
     "nodebb-plugin-markdown": "4.0.17",
     "nodebb-plugin-mentions": "1.0.21",
+    "nodebb-plugin-shoutbox": "^0.3.1",
     "nodebb-plugin-soundpack-default": "0.1.6",
     "nodebb-plugin-spam-be-gone": "0.4.6",
     "nodebb-plugin-sso-bnet": "jsmylnycky/nodebb-plugin-sso-bnet",
