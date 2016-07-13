@@ -92,7 +92,7 @@ module.exports = function(SocketPosts) {
 	};
 
 	SocketPosts.favourite = function(socket, data, callback) {
-		favouriteCommand(socket, 'favourite', 'favourited', 'notifications:favourited_your_post_in', data, callback);
+		favouriteCommand(socket, 'favourite', 'favourited', '', data, callback);
 	};
 
 	SocketPosts.unfavourite = function(socket, data, callback) {
@@ -103,7 +103,7 @@ module.exports = function(SocketPosts) {
 		if (!socket.uid) {
 			return callback(new Error('[[error:not-logged-in]]'))
 		}
-		if(!data || !data.pid || !data.room_id) {
+		if (!data || !data.pid || !data.room_id) {
 			return callback(new Error('[[error:invalid-data]]'));
 		}
 		async.parallel({
@@ -124,11 +124,11 @@ module.exports = function(SocketPosts) {
 
 			/*
 			hooks:
-				filter.post.upvote
-				filter.post.downvote
-				filter.post.unvote
-				filter.post.favourite
-				filter.post.unfavourite
+				filter:post.upvote
+				filter:post.downvote
+				filter:post.unvote
+				filter:post.favourite
+				filter:post.unfavourite
 			 */
 			plugins.fireHook('filter:post.' + command, {data: data, uid: socket.uid}, function(err, filteredData) {
 				if (err) {
@@ -152,7 +152,9 @@ module.exports = function(SocketPosts) {
 			}
 
 			if (result && notification) {
-				socketHelpers.sendNotificationToPostOwner(data.pid, socket.uid, notification);
+				socketHelpers.sendNotificationToPostOwner(data.pid, socket.uid, command, notification);
+			} else if (result && command === 'unvote') {
+				socketHelpers.rescindUpvoteNotification(data.pid, socket.uid);
 			}
 			callback();
 		});

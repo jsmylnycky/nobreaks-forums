@@ -1,16 +1,15 @@
 'use strict';
 
-var path = require('path'),
-	async = require('async'),
-	sm = require('sitemap'),
-	url = require('url'),
-	nconf = require('nconf'),
-	db = require('./database'),
-	categories = require('./categories'),
-	topics = require('./topics'),
-	privileges = require('./privileges'),
-	meta = require('./meta'),
-	utils = require('../public/src/utils');
+var async = require('async');
+var sm = require('sitemap');
+var nconf = require('nconf');
+
+var db = require('./database');
+var categories = require('./categories');
+var topics = require('./topics');
+var privileges = require('./privileges');
+var meta = require('./meta');
+var utils = require('../public/src/utils');
 
 var sitemap = {
 		maps: {
@@ -46,49 +45,32 @@ sitemap.render = function(callback) {
 	});
 };
 
-sitemap.getStaticUrls = function(callback) {
-	callback(null, [{
-		url: '',
-		changefreq: 'weekly',
-		priority: '0.6'
-	}, {
-		url: '/recent',
-		changefreq: 'daily',
-		priority: '0.4'
-	}, {
-		url: '/users',
-		changefreq: 'daily',
-		priority: '0.4'
-	}, {
-		url: '/groups',
-		changefreq: 'daily',
-		priority: '0.4'
-	}]);
-};
-
 sitemap.getPages = function(callback) {
-	if (sitemap.maps.pages && sitemap.maps.pages.cache.length) {
+	if (
+		sitemap.maps.pages &&
+		Date.now() < parseInt(sitemap.maps.pages.cacheSetTimestamp, 10) + parseInt(sitemap.maps.pages.cacheResetPeriod, 10)
+	) {
 		return sitemap.maps.pages.toXML(callback);
 	}
 
 	var urls = [{
 			url: '',
 			changefreq: 'weekly',
-			priority: '0.6'
+			priority: 0.6
 		}, {
 			url: '/recent',
 			changefreq: 'daily',
-			priority: '0.4'
+			priority: 0.4
 		}, {
 			url: '/users',
 			changefreq: 'daily',
-			priority: '0.4'
+			priority: 0.4
 		}, {
 			url: '/groups',
 			changefreq: 'daily',
-			priority: '0.4'
+			priority: 0.4
 		}];
-	
+
 	sitemap.maps.pages = sm.createSitemap({
 		hostname: nconf.get('url'),
 		cacheTime: 1000 * 60 * 60 * 24,	// Cached for 24 hours
@@ -99,7 +81,10 @@ sitemap.getPages = function(callback) {
 };
 
 sitemap.getCategories = function(callback) {
-	if (sitemap.maps.categories && sitemap.maps.categories.cache.length) {
+	if (
+		sitemap.maps.categories &&
+		Date.now() < parseInt(sitemap.maps.categories.cacheSetTimestamp, 10) + parseInt(sitemap.maps.categories.cacheResetPeriod, 10)
+	) {
 		return sitemap.maps.categories.toXML(callback);
 	}
 
@@ -114,7 +99,7 @@ sitemap.getCategories = function(callback) {
 				categoryUrls.push({
 					url: '/category/' + category.slug,
 					changefreq: 'weekly',
-					priority: '0.4'
+					priority: 0.4
 				});
 			}
 		});
@@ -138,7 +123,10 @@ sitemap.getTopicPage = function(page, callback) {
 	var min = (parseInt(page, 10) - 1) * numTopics;
 	var max = min + numTopics;
 
-	if (sitemap.maps.topics[page-1] && sitemap.maps.topics[page-1].cache.length) {
+	if (
+		sitemap.maps.topics[page-1] &&
+		Date.now() < parseInt(sitemap.maps.topics[page-1].cacheSetTimestamp, 10) + parseInt(sitemap.maps.topics[page-1].cacheResetPeriod, 10)
+	) {
 		return sitemap.maps.topics[page-1].toXML(callback);
 	}
 
@@ -165,7 +153,7 @@ sitemap.getTopicPage = function(page, callback) {
 					url: '/topic/' + topic.slug,
 					lastmodISO: utils.toISOString(topic.lastposttime),
 					changefreq: 'daily',
-					priority: '0.6'
+					priority: 0.6
 				});
 			}
 		});

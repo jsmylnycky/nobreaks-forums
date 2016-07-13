@@ -33,7 +33,7 @@ settingsController.get = function(req, res, callback) {
 					user.getSettings(userData.uid, next);
 				},
 				userGroups: function(next) {
-					groups.getUserGroups([userData.uid], next);
+					groups.getUserGroupsFromSet('groups:createtime', [userData.uid], next);
 				},
 				languages: function(next) {
 					languages.list(next);
@@ -49,7 +49,9 @@ settingsController.get = function(req, res, callback) {
 		},
 		function(results, next) {
 			userData.settings = results.settings;
-			userData.userGroups = results.userGroups[0];
+			userData.userGroups = results.userGroups[0].filter(function(group) {
+				return group && group.userTitleEnabled && !groups.isPrivilegeGroup(group.name) && group.name !== 'registered-users';
+			});
 			userData.languages = results.languages;
 			userData.homePageRoutes = results.homePageRoutes;
 			userData.ips = results.ips;
@@ -94,8 +96,22 @@ settingsController.get = function(req, res, callback) {
 			{ "name": "Yeti", "value": "yeti" }
 		];
 
+		var isCustom = true;
 		userData.homePageRoutes.forEach(function(route) {
 			route.selected = route.route === userData.settings.homePageRoute;
+			if (route.selected) {
+				isCustom = false;
+			}
+		});
+
+		if (isCustom && userData.settings.homePageRoute === 'none') {
+			isCustom = false;
+		}
+
+		userData.homePageRoutes.push({
+		 	route: 'custom',
+		 	name: 'Custom',
+		 	selected: isCustom
 		});
 
 		userData.bootswatchSkinOptions.forEach(function(skin) {
@@ -113,6 +129,8 @@ settingsController.get = function(req, res, callback) {
 		userData.disableCustomUserSkins = parseInt(meta.config.disableCustomUserSkins, 10) === 1;
 
 		userData.allowUserHomePage = parseInt(meta.config.allowUserHomePage, 10) === 1;
+
+		userData.inTopicSearchAvailable = plugins.hasListeners('filter:topic.search');
 
 		userData.title = '[[pages:account/settings]]';
 		userData.breadcrumbs = helpers.buildBreadcrumbs([{text: userData.username, url: '/user/' + userData.userslug}, {text: '[[user:settings]]'}]);
@@ -140,40 +158,28 @@ function getHomePageRoutes(callback) {
 					name: 'Category: ' + category.name
 				};
 			});
-			next(null, categoryData);
+
+			categoryData = categoryData || [];
+
+			plugins.fireHook('filter:homepage.get', {routes: [
+				{
+					route: 'categories',
+					name: 'Categories'
+				},
+				{
+					route: 'recent',
+					name: 'Recent'
+				},
+				{
+					route: 'popular',
+					name: 'Popular'
+				}
+			].concat(categoryData)}, next);
+		},
+		function (data, next) {
+			next(null, data.routes);
 		}
-	], function(err, categoryData) {
-		if (err) {
-			return callback(err);
-		}
-		categoryData = categoryData || [];
-
-		plugins.fireHook('filter:homepage.get', {routes: [
-			{
-				route: 'categories',
-				name: 'Categories'
-			},
-			{
-				route: 'recent',
-				name: 'Recent'
-			},
-			{
-				route: 'popular',
-				name: 'Popular'
-			}
-		].concat(categoryData)}, function(err, data) {
-			if (err) {
-				return callback(err);
-			}
-
-			data.routes.push({
-				route: 'custom',
-				name: 'Custom'
-			});
-
-			callback(null, data.routes);
-		});
-	});
+	], callback);
 }
 
 

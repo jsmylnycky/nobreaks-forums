@@ -28,8 +28,19 @@
 			</div>
 			
 			<div class="form-group">
-				<label for="maximumFileSize">Maximum File Size</label>
+				<label for="maximumImageWidth">Resize images down to specified width (in pixels)</label>
+				<input type="text" class="form-control" value="760" data-field="maximumImageWidth" placeholder="760">
+				<p class="help-block">
+					(in pixels, default: 760 pixels, set to 0 to disable)
+				</p>
+			</div>
+
+			<div class="form-group">
+				<label for="maximumFileSize">Maximum File Size (in KiB)</label>
 				<input type="text" class="form-control" value="2048" data-field="maximumFileSize">
+				<p class="help-block">
+					(in kilobytes, default: 2048 KiB)
+				</p>
 			</div>
 
 			<div class="checkbox">
@@ -91,16 +102,25 @@
 			<div class="form-group">
 				<label for="profileImageDimension">Profile Image Dimension</label>
 				<input id="profileImageDimension" type="text" class="form-control" data-field="profileImageDimension" placeholder="128" />
+				<p class="help-block">
+					(in pixels, default: 128 pixels)
+				</p>
 			</div>
 
 			<div class="form-group">
 				<label>Maximum Profile Image File Size</label>
 				<input type="text" class="form-control" placeholder="Maximum size of uploaded user images in kilobytes" data-field="maximumProfileImageSize" />
+				<p class="help-block">
+					(in kilobytes, default: 256 KiB)
+				</p>
 			</div>
 
 			<div class="form-group">
 				<label>Maximum Cover Image File Size</label>
 				<input type="text" class="form-control" placeholder="Maximum size of uploaded cover images in kilobytes" data-field="maximumCoverImageSize" />
+				<p class="help-block">
+					(in kilobytes, default: 2,048 KiB)
+				</p>
 			</div>
 		</form>
 	</div>

@@ -7,8 +7,10 @@ var fs = require('fs'),
 	winston = require('winston'),
 	nconf = require('nconf'),
 	_ = require('underscore'),
-	file = require('../file'),
-	utils = require('../../public/src/utils');
+	file = require('../file');
+
+var utils = require('../../public/src/utils'),
+	meta = require('../meta');
 
 
 module.exports = function(Plugins) {
@@ -39,6 +41,9 @@ module.exports = function(Plugins) {
 				},
 				function(next) {
 					mapClientSideScripts(pluginData, next);
+				},
+				function(next) {
+					mapClientModules(pluginData, next);
 				},
 				function(next) {
 					loadLanguages(pluginData, next);
@@ -163,7 +168,47 @@ module.exports = function(Plugins) {
 		}
 
 		callback();
-	}
+	};
+
+	function mapClientModules(pluginData, callback) {
+		if (!pluginData.hasOwnProperty('modules')) {
+			return callback();
+		}
+
+		var modules = {};
+
+		if (Array.isArray(pluginData.modules)) {
+			if (global.env === 'development') {
+				winston.verbose('[plugins] Found ' + pluginData.modules.length + ' AMD-style module(s) for plugin ' + pluginData.id);
+			}
+
+			var strip = pluginData.hasOwnProperty('modulesStrip') ? parseInt(pluginData.modulesStrip, 10) : 0;
+
+			pluginData.modules.forEach(function(file) {
+				if (strip) {
+					modules[file.replace(new RegExp('\.?(\/[^\/]+){' + strip + '}\/'), '')] = path.join('./node_modules/', pluginData.id, file);
+				} else {
+					modules[path.basename(file)] = path.join('./node_modules/', pluginData.id, file);
+				}
+			});
+
+			meta.js.scripts.modules = _.extend(meta.js.scripts.modules, modules);
+		} else {
+			var keys = Object.keys(pluginData.modules);
+
+			if (global.env === 'development') {
+				winston.verbose('[plugins] Found ' + keys.length + ' AMD-style module(s) for plugin ' + pluginData.id);
+			}
+
+			for (var name in pluginData.modules) {
+				modules[name] = path.join('./node_modules/', pluginData.id, pluginData.modules[name]);
+			}
+
+			meta.js.scripts.modules = _.extend(meta.js.scripts.modules, modules);
+		}
+
+		callback();
+	};
 
 	function loadLanguages(pluginData, callback) {
 		if (typeof pluginData.languages !== 'string') {
@@ -174,28 +219,34 @@ module.exports = function(Plugins) {
 			fallbackMap = {};
 
 		utils.walk(pathToFolder, function(err, languages) {
-			var arr = [];
-
 			async.each(languages, function(pathToLang, next) {
 				fs.readFile(pathToLang, function(err, file) {
 					if (err) {
 						return next(err);
 					}
-					var json;
+					var data;
+					var route = pathToLang.replace(pathToFolder + '/', '');
 
 					try {
-						json = JSON.parse(file.toString());
+						data = JSON.parse(file.toString());
 					} catch (err) {
 						winston.error('[plugins] Unable to parse custom language file: ' + pathToLang + '\r\n' + err.stack);
 						return next(err);
 					}
 
-					arr.push({
-						file: json,
-						route: pathToLang.replace(pathToFolder, '')
-					});
+					Plugins.customLanguages[route] = Plugins.customLanguages[route] || {};
+					_.extendOwn(Plugins.customLanguages[route], data);
 
 					if (pluginData.defaultLang && pathToLang.endsWith(pluginData.defaultLang + '/' + path.basename(pathToLang))) {
+						Plugins.languageCodes.map(function(code) {
+							if (pluginData.defaultLang !== code) {
+								return code + '/' + path.basename(pathToLang);
+							} else {
+								return null;
+							}
+						}).filter(Boolean).forEach(function(key) {
+							Plugins.customLanguages[key] = _.defaults(Plugins.customLanguages[key] || {}, data);
+						});
 						fallbackMap[path.basename(pathToLang, '.json')] = path.join(pathToFolder, pluginData.defaultLang, path.basename(pathToLang));
 					}
 
@@ -206,7 +257,7 @@ module.exports = function(Plugins) {
 					return callback(err);
 				}
 
-				Plugins.customLanguages = Plugins.customLanguages.concat(arr);
+				// do I need this either?
 				_.extendOwn(Plugins.customLanguageFallbacks, fallbackMap);
 
 				callback();

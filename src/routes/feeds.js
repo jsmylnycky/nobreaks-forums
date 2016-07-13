@@ -38,7 +38,7 @@ function generateForTopic(req, res, callback) {
 			if (parseInt(results.topic.deleted, 10) && !results.privileges.view_deleted) {
 				return callback();
 			}
-			if (!results.privileges.read) {
+			if (!results.privileges.read || !results.privileges['topics:read']) {
 				return helpers.notAllowed(req, res);
 			}
 			userPrivileges = results.privileges;
@@ -107,7 +107,7 @@ function generateForUserTopics(req, res, callback) {
 		}
 	], function(err, userData) {
 		if (err) {
-			return next(err);
+			return callback(err);
 		}
 
 		generateForTopics({
@@ -116,7 +116,7 @@ function generateForUserTopics(req, res, callback) {
 			description: 'A list of topics that are posted by ' + userData.username,
 			feed_url: '/user/' + userslug + '/topics.rss',
 			site_url: '/user/' + userslug + '/topics'
-		}, 'uid:' + userData.uid + ':topics', req, res, next);
+		}, 'uid:' + userData.uid + ':topics', req, res, callback);
 	});
 }
 

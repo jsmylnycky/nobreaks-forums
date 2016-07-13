@@ -28,6 +28,10 @@ usersController.noPosts = function(req, res, next) {
 	getUsersByScore('users:postcount', 'noposts', 0, 0, req, res, next);
 };
 
+usersController.flagged = function(req, res, next) {
+	getUsersByScore('users:flags', 'mostflags', 1, '+inf', req, res, next);
+};
+
 usersController.inactive = function(req, res, next) {
 	var timeRange = 1000 * 60 * 60 * 24 * 30 * (parseInt(req.query.months, 10) || 3);
 	var cutoff = Date.now() - timeRange;
@@ -77,10 +81,17 @@ usersController.banned = function(req, res, next) {
 };
 
 usersController.registrationQueue = function(req, res, next) {
+	var page = parseInt(req.query.page, 10) || 1;
+	var itemsPerPage = 20;
+	var start = (page - 1) * 20;
+	var stop = start + itemsPerPage - 1;
 	var invitations;
 	async.parallel({
+		registrationQueueCount: function(next) {
+			db.sortedSetCard('registration:queue', next);
+		},
 		users: function(next) {
-			user.getRegistrationQueue(0, -1, next);
+			user.getRegistrationQueue(start, stop, next);
 		},
 		invites: function(next) {
 			async.waterfall([
@@ -118,6 +129,8 @@ usersController.registrationQueue = function(req, res, next) {
 		if (err) {
 			return next(err);
 		}
+		var pageCount = Math.max(1, Math.ceil(data.registrationQueueCount / itemsPerPage));
+		data.pagination = pagination.create(page, pageCount);
 		res.render('admin/manage/registration', data);
 	});
 };
@@ -146,7 +159,7 @@ function getUsers(set, section, req, res, next) {
 		var data = {
 			users: results.users,
 			page: page,
-			pageCount: Math.ceil(results.count / resultsPerPage)
+			pageCount: Math.max(1, Math.ceil(results.count / resultsPerPage))
 		};
 		data[section] = true;
 		render(req, res, data);
@@ -157,6 +170,12 @@ function render(req, res, data) {
 	data.search_display = 'hidden';
 	data.pagination = pagination.create(data.page, data.pageCount, req.query);
 	data.requireEmailConfirmation = parseInt(meta.config.requireEmailConfirmation, 10) === 1;
+
+	var registrationType = meta.config.registrationType;
+
+	data.inviteOnly = registrationType === 'invite-only' || registrationType === 'admin-invite-only';
+	data.adminInviteOnly = registrationType === 'admin-invite-only';
+
 	res.render('admin/manage/users', data);
 }
 

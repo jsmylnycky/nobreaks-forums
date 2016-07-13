@@ -1,5 +1,5 @@
 "use strict";
-/*global config, define, app, socket, ajaxify, bootbox, templates, Chart, utils */
+/*global config, define, app, socket, ajaxify, bootbox, templates */
 
 define('admin/manage/category', [
 	'uploader',
@@ -99,6 +99,19 @@ define('admin/manage/category', [
 			});
 		});
 
+		$('.copy-settings').on('click', function() {
+			selectCategoryModal(function(cid) {
+				socket.emit('admin.categories.copySettingsFrom', {fromCid: cid, toCid: ajaxify.data.category.cid}, function(err) {
+					if (err) {
+						return app.alertError(err.message);
+					}
+					app.alertSuccess('Settings Copied!');
+					ajaxify.refresh();
+				});
+			});
+			return false;
+		});
+
 		$('.upload-button').on('click', function() {
 			var inputEl = $(this);
 			var cid = inputEl.attr('data-cid');
@@ -154,12 +167,6 @@ define('admin/manage/category', [
 		});
 
 		Category.setupPrivilegeTable();
-
-		if (window.location.hash === '#analytics') {
-			Category.setupGraphs();
-		} else {
-			$('a[href="#analytics"]').on('shown.bs.tab', Category.setupGraphs);
-		}
 	};
 
 	Category.setupPrivilegeTable = function() {
@@ -192,6 +199,7 @@ define('admin/manage/category', [
 		$('.privilege-table-container').on('click', '[data-action="search.user"]', Category.addUserToPrivilegeTable);
 		$('.privilege-table-container').on('click', '[data-action="search.group"]', Category.addGroupToPrivilegeTable);
 		$('.privilege-table-container').on('click', '[data-action="copyToChildren"]', Category.copyPrivilegesToChildren);
+		$('.privilege-table-container').on('click', '[data-action="copyPrivilegesFrom"]', Category.copyPrivilegesFromCategory);
 
 		Category.exposeAssumedPrivileges();
 	};
@@ -308,7 +316,7 @@ define('admin/manage/category', [
 			autocomplete.user(inputEl, function(ev, ui) {
 				socket.emit('admin.categories.setPrivilege', {
 					cid: ajaxify.data.category.cid,
-					privilege: ['find', 'read'],
+					privilege: ['find', 'read', 'topics:read'],
 					set: true,
 					member: ui.item.user.uid
 				}, function(err) {
@@ -336,7 +344,7 @@ define('admin/manage/category', [
 			autocomplete.group(inputEl, function(ev, ui) {
 				socket.emit('admin.categories.setPrivilege', {
 					cid: ajaxify.data.category.cid,
-					privilege: ['groups:find', 'groups:read'],
+					privilege: ['groups:find', 'groups:read', 'groups:topics:read'],
 					set: true,
 					member: ui.item.group.name
 				}, function(err) {
@@ -360,106 +368,50 @@ define('admin/manage/category', [
 		});
 	};
 
-	Category.setupGraphs = function() {
-		var hourlyCanvas = document.getElementById('pageviews:hourly'),
-			dailyCanvas = document.getElementById('pageviews:daily'),
-			topicsCanvas = document.getElementById('topics:daily'),
-			postsCanvas = document.getElementById('posts:daily'),
-			hourlyLabels = utils.getHoursArray().map(function(text, idx) {
-				return idx % 3 ? '' : text;
-			}),
-			dailyLabels = utils.getDaysArray().map(function(text, idx) {
-				return idx % 3 ? '' : text;
+	Category.copyPrivilegesFromCategory = function() {
+		selectCategoryModal(function(cid) {
+			socket.emit('admin.categories.copyPrivilegesFrom', {toCid: ajaxify.data.category.cid, fromCid: cid}, function(err) {
+				if (err) {
+					return app.alertError(err.message);
+				}
+				ajaxify.refresh();
 			});
-
-		if (utils.isMobile()) {
-			Chart.defaults.global.showTooltips = false;
-		}
-
-		var data = {
-			'pageviews:hourly': {
-				labels: hourlyLabels,
-				datasets: [
-					{
-						label: "",
-						fillColor: "rgba(186,139,175,0.2)",
-						strokeColor: "rgba(186,139,175,1)",
-						pointColor: "rgba(186,139,175,1)",
-						pointStrokeColor: "#fff",
-						pointHighlightFill: "#fff",
-						pointHighlightStroke: "rgba(186,139,175,1)",
-						data: ajaxify.data.analytics['pageviews:hourly']
-					}
-				]
-			},
-			'pageviews:daily': {
-				labels: dailyLabels,
-				datasets: [
-					{
-						label: "",
-						fillColor: "rgba(151,187,205,0.2)",
-						strokeColor: "rgba(151,187,205,1)",
-						pointColor: "rgba(151,187,205,1)",
-						pointStrokeColor: "#fff",
-						pointHighlightFill: "#fff",
-						pointHighlightStroke: "rgba(151,187,205,1)",
-						data: ajaxify.data.analytics['pageviews:daily']
-					}
-				]
-			},
-			'topics:daily': {
-				labels: dailyLabels.slice(-7),
-				datasets: [
-					{
-						label: "",
-						fillColor: "rgba(171,70,66,0.2)",
-						strokeColor: "rgba(171,70,66,1)",
-						pointColor: "rgba(171,70,66,1)",
-						pointStrokeColor: "#fff",
-						pointHighlightFill: "#fff",
-						pointHighlightStroke: "rgba(171,70,66,1)",
-						data: ajaxify.data.analytics['topics:daily']
-					}
-				]
-			},
-			'posts:daily': {
-				labels: dailyLabels.slice(-7),
-				datasets: [
-					{
-						label: "",
-						fillColor: "rgba(161,181,108,0.2)",
-						strokeColor: "rgba(161,181,108,1)",
-						pointColor: "rgba(161,181,108,1)",
-						pointStrokeColor: "#fff",
-						pointHighlightFill: "#fff",
-						pointHighlightStroke: "rgba(161,181,108,1)",
-						data: ajaxify.data.analytics['posts:daily']
-					}
-				]
-			},
-		};
-
-		hourlyCanvas.width = $(hourlyCanvas).parent().width();
-		dailyCanvas.width = $(dailyCanvas).parent().width();
-		topicsCanvas.width = $(topicsCanvas).parent().width();
-		postsCanvas.width = $(postsCanvas).parent().width();
-		new Chart(hourlyCanvas.getContext('2d')).Line(data['pageviews:hourly'], {
-			responsive: true,
-			animation: false
-		});
-		new Chart(dailyCanvas.getContext('2d')).Line(data['pageviews:daily'], {
-			responsive: true,
-			animation: false
-		});
-		new Chart(topicsCanvas.getContext('2d')).Line(data['topics:daily'], {
-			responsive: true,
-			animation: false
-		});
-		new Chart(postsCanvas.getContext('2d')).Line(data['posts:daily'], {
-			responsive: true,
-			animation: false
 		});
 	};
+
+	function selectCategoryModal(callback) {
+		socket.emit('admin.categories.getNames', function(err, categories) {
+			if (err) {
+				return app.alertError(err.message);
+			}
+
+			templates.parse('admin/partials/categories/select-category', {
+				categories: categories
+			}, function(html) {
+				function submit() {
+					var formData = modal.find('form').serializeObject();
+					callback(formData['select-cid']);
+					modal.modal('hide');
+					return false;
+				}
+
+				var modal = bootbox.dialog({
+					title: 'Select a Category',
+					message: html,
+					buttons: {
+						save: {
+							label: 'Copy',
+							className: 'btn-primary',
+							callback: submit
+						}
+					}
+				});
+
+				modal.find('form').on('submit', submit);
+			});
+		});
+	}
+
 
 	return Category;
 });

@@ -16,13 +16,14 @@ define('uploader', ['csrf', 'translator'], function(csrf, translator) {
 	};
 
 	module.show = function(data, callback) {
+		var fileSize = data.hasOwnProperty('fileSize') && data.fileSize !== undefined ? parseInt(data.fileSize, 10) : false;
 		parseModal({
 			showHelp: data.hasOwnProperty('showHelp') && data.showHelp !== undefined ? data.showHelp : true,
-			fileSize: data.hasOwnProperty('fileSize') && data.fileSize !== undefined ? parseInt(data.fileSize, 10) : false,
+			fileSize: fileSize,
 			title: data.title || '[[global:upload_file]]',
 			description: data.description || '',
 			button: data.button || '[[global:upload]]',
-			accept: data.accept ? data.accept.replace(/,/g, '&#44;') : ''
+			accept: data.accept ? data.accept.replace(/,/g, '&#44; ') : ''
 		}, function(uploadModal) {
 			uploadModal = $(uploadModal);
 
@@ -36,19 +37,27 @@ define('uploader', ['csrf', 'translator'], function(csrf, translator) {
 			uploadForm.find('#params').val(JSON.stringify(data.params));
 
 			uploadModal.find('#fileUploadSubmitBtn').on('click', function() {
+				$(this).addClass('disabled');
 				uploadForm.submit();
 			});
 
 			uploadForm.submit(function() {
-				onSubmit(uploadModal, callback);
+				onSubmit(uploadModal, fileSize, callback);
 				return false;
 			});
 		});
 	};
 
-	function onSubmit(uploadModal, callback) {
+	module.hideAlerts = function(modal) {
+		$(modal).find('#alert-status, #alert-success, #alert-error, #upload-progress-box').addClass('hide');
+	};
+
+	function onSubmit(uploadModal, fileSize, callback) {
 		function showAlert(type, message) {
 			module.hideAlerts(uploadModal);
+			if (type === 'error') {
+				uploadModal.find('#fileUploadSubmitBtn').removeClass('disabled');
+			}
 			uploadModal.find('#alert-' + type).translateText(message).removeClass('hide');
 		}
 
@@ -57,8 +66,12 @@ define('uploader', ['csrf', 'translator'], function(csrf, translator) {
 		uploadModal.find('#upload-progress-bar').css('width', '0%');
 		uploadModal.find('#upload-progress-box').show().removeClass('hide');
 
-		if (!uploadModal.find('#fileInput').val()) {
+		var fileInput = uploadModal.find('#fileInput');
+		if (!fileInput.val()) {
 			return showAlert('error', '[[uploads:select-file-to-upload]]');
+		}
+		if (!hasValidFileSize(fileInput[0], fileSize)) {
+			return showAlert('error', '[[error:file-too-big, ' + fileSize + ']]');
 		}
 
 		uploadModal.find('#uploadForm').ajaxSubmit({
@@ -107,9 +120,12 @@ define('uploader', ['csrf', 'translator'], function(csrf, translator) {
 		return response;
 	}
 
-	module.hideAlerts = function(modal) {
-		$(modal).find('#alert-status, #alert-success, #alert-error, #upload-progress-box').addClass('hide');
-	};
+	function hasValidFileSize(fileElement, maxSize) {
+		if (window.FileReader && maxSize) {
+			return fileElement.files[0].size <= maxSize * 1000;
+		}
+		return true;
+	}
 
 	return module;
 });
