@@ -4,7 +4,7 @@
 	"email": "Email",
 	"remember_me": "Remember Me?",
 	"forgot_password": "Forgot Password?",
-	"alternative_logins": "We made registering easy.  You don't have to.  Use the button below and you'll be authenticated against Battle.net.",
+	"alternative_logins": "Alternative Logins",
 	"failed_login_attempt": "Login Unsuccessful",
 	"login_successful": "You have successfully logged in!",
 	"dont_have_account": "Don't have an account?",
